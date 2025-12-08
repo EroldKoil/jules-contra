@@ -1,0 +1,32 @@
+{
+  "name": "app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/EroldKoil/jules-contra.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/EroldKoil/jules-contra/issues"
+  },
+  "homepage": "https://github.com/EroldKoil/jules-contra#readme",
+  "dependencies": {
+    "phaser": "^3.90.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.2.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1"
+  }
+}
