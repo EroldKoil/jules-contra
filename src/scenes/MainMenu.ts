@@ -1,10 +1,8 @@
 import Phaser from 'phaser';
 
 export class MainMenu extends Phaser.Scene {
-  private startText!: Phaser.GameObjects.Text;
-  private refreshText!: Phaser.GameObjects.Text;
-  private currentSelection: number = 0; // 0 for Start, 1 for Refresh
-  private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
+  private levelTexts: Phaser.GameObjects.Text[] = [];
+  private currentSelection: number = 0;
   private wKey!: Phaser.Input.Keyboard.Key;
   private sKey!: Phaser.Input.Keyboard.Key;
   private enterKey!: Phaser.Input.Keyboard.Key;
@@ -17,22 +15,20 @@ export class MainMenu extends Phaser.Scene {
   create() {
     const { width, height } = this.scale;
 
-    this.add.text(width / 2, height / 3, 'CONTRA STYLE GAME', {
+    this.add.text(width / 2, height / 4, 'SELECT LEVEL', {
       fontSize: '40px',
       color: '#ffffff'
     }).setOrigin(0.5);
 
-    this.startText = this.add.text(width / 2, height / 2, 'START GAME', {
-      fontSize: '24px',
-      color: '#ffffff'
-    }).setOrigin(0.5);
+    // Create 3 Level buttons
+    for (let i = 1; i <= 3; i++) {
+        const text = this.add.text(width / 2, height / 3 + (i * 50), `LEVEL ${i}`, {
+            fontSize: '24px',
+            color: '#ffffff'
+        }).setOrigin(0.5);
+        this.levelTexts.push(text);
+    }
 
-    this.refreshText = this.add.text(width / 2, height / 2 + 50, 'REFRESH', {
-      fontSize: '24px',
-      color: '#ffffff'
-    }).setOrigin(0.5);
-
-    this.cursors = this.input.keyboard!.createCursorKeys();
     this.wKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W);
     this.sKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.S);
     this.enterKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
@@ -43,31 +39,26 @@ export class MainMenu extends Phaser.Scene {
 
   update() {
     // Navigation
-    if (Phaser.Input.Keyboard.JustDown(this.cursors.up) || Phaser.Input.Keyboard.JustDown(this.wKey)) {
-      this.currentSelection = 0;
+    if (Phaser.Input.Keyboard.JustDown(this.wKey)) {
+      this.currentSelection--;
+      if (this.currentSelection < 0) this.currentSelection = this.levelTexts.length - 1;
       this.updateSelectionVisuals();
-    } else if (Phaser.Input.Keyboard.JustDown(this.cursors.down) || Phaser.Input.Keyboard.JustDown(this.sKey)) {
-      this.currentSelection = 1;
+    } else if (Phaser.Input.Keyboard.JustDown(this.sKey)) {
+      this.currentSelection++;
+      if (this.currentSelection >= this.levelTexts.length) this.currentSelection = 0;
       this.updateSelectionVisuals();
     }
 
     // Selection
     if (Phaser.Input.Keyboard.JustDown(this.enterKey) || Phaser.Input.Keyboard.JustDown(this.iKey)) {
-      if (this.currentSelection === 0) {
-        this.scene.start('GameLevel');
-      } else {
-        window.location.reload();
-      }
+      const selectedLevel = this.currentSelection + 1; // 0-based index to 1-based ID
+      this.scene.start('GameLevel', { levelId: selectedLevel });
     }
   }
 
   private updateSelectionVisuals() {
-    if (this.currentSelection === 0) {
-      this.startText.setColor('#ffff00');
-      this.refreshText.setColor('#ffffff');
-    } else {
-      this.startText.setColor('#ffffff');
-      this.refreshText.setColor('#ffff00');
-    }
+    this.levelTexts.forEach((text, index) => {
+        text.setColor(index === this.currentSelection ? '#ffff00' : '#ffffff');
+    });
   }
 }
