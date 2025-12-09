@@ -23,10 +23,10 @@
   "homepage": "https://github.com/EroldKoil/jules-contra#readme",
   "dependencies": {
     "phaser": "^3.90.0",
-    "typescript": "^5.9.3",
     "vite": "^7.2.7"
   },
   "devDependencies": {
-    "@types/node": "^24.10.1"
+    "@types/node": "^24.10.1",
+    "typescript": "^5.9.3"
   }
 }
