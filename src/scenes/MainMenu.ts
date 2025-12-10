@@ -1,14 +1,14 @@
 import Phaser from 'phaser';
 
 export class MainMenu extends Phaser.Scene {
-  private startText!: Phaser.GameObjects.Text;
-  private refreshText!: Phaser.GameObjects.Text;
-  private currentSelection: number = 0; // 0 for Start, 1 for Refresh
-  private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
-  private wKey!: Phaser.Input.Keyboard.Key;
-  private sKey!: Phaser.Input.Keyboard.Key;
-  private enterKey!: Phaser.Input.Keyboard.Key;
-  private iKey!: Phaser.Input.Keyboard.Key;
+  private keys!: {
+    w: Phaser.Input.Keyboard.Key,
+    s: Phaser.Input.Keyboard.Key,
+    enter: Phaser.Input.Keyboard.Key,
+    i: Phaser.Input.Keyboard.Key
+  };
+  private selectedIndex: number = 0;
+  private menuItems: Phaser.GameObjects.Text[] = [];
 
   constructor() {
     super('MainMenu');
@@ -17,57 +17,52 @@ export class MainMenu extends Phaser.Scene {
   create() {
     const { width, height } = this.scale;
 
-    this.add.text(width / 2, height / 3, 'CONTRA STYLE GAME', {
+    this.add.text(width / 2, height / 4, 'CONTRA CLONE', {
       fontSize: '40px',
       color: '#ffffff'
     }).setOrigin(0.5);
 
-    this.startText = this.add.text(width / 2, height / 2, 'START GAME', {
-      fontSize: '24px',
-      color: '#ffffff'
-    }).setOrigin(0.5);
+    const options = ['Start Level 1', 'Start Level 2', 'Start Level 3'];
 
-    this.refreshText = this.add.text(width / 2, height / 2 + 50, 'REFRESH', {
-      fontSize: '24px',
-      color: '#ffffff'
-    }).setOrigin(0.5);
+    options.forEach((opt, index) => {
+      const text = this.add.text(width / 2, height / 2 + (index * 40), opt, {
+        fontSize: '24px',
+        color: index === 0 ? '#ffff00' : '#ffffff'
+      }).setOrigin(0.5);
+      this.menuItems.push(text);
+    });
 
-    this.cursors = this.input.keyboard!.createCursorKeys();
-    this.wKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W);
-    this.sKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.S);
-    this.enterKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
-    this.iKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.I);
-
-    this.updateSelectionVisuals();
+    this.keys = {
+      w: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W),
+      s: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.S),
+      enter: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER),
+      i: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.I)
+    };
   }
 
   update() {
-    // Navigation
-    if (Phaser.Input.Keyboard.JustDown(this.cursors.up) || Phaser.Input.Keyboard.JustDown(this.wKey)) {
-      this.currentSelection = 0;
-      this.updateSelectionVisuals();
-    } else if (Phaser.Input.Keyboard.JustDown(this.cursors.down) || Phaser.Input.Keyboard.JustDown(this.sKey)) {
-      this.currentSelection = 1;
-      this.updateSelectionVisuals();
+    if (Phaser.Input.Keyboard.JustDown(this.keys.w)) {
+      this.selectedIndex--;
+      if (this.selectedIndex < 0) this.selectedIndex = this.menuItems.length - 1;
+      this.updateVisuals();
+    } else if (Phaser.Input.Keyboard.JustDown(this.keys.s)) {
+      this.selectedIndex++;
+      if (this.selectedIndex >= this.menuItems.length) this.selectedIndex = 0;
+      this.updateVisuals();
     }
 
-    // Selection
-    if (Phaser.Input.Keyboard.JustDown(this.enterKey) || Phaser.Input.Keyboard.JustDown(this.iKey)) {
-      if (this.currentSelection === 0) {
-        this.scene.start('GameLevel');
-      } else {
-        window.location.reload();
-      }
+    if (Phaser.Input.Keyboard.JustDown(this.keys.enter) || Phaser.Input.Keyboard.JustDown(this.keys.i)) {
+      this.startGame(this.selectedIndex + 1);
     }
   }
 
-  private updateSelectionVisuals() {
-    if (this.currentSelection === 0) {
-      this.startText.setColor('#ffff00');
-      this.refreshText.setColor('#ffffff');
-    } else {
-      this.startText.setColor('#ffffff');
-      this.refreshText.setColor('#ffff00');
-    }
+  private updateVisuals() {
+    this.menuItems.forEach((text, index) => {
+      text.setColor(index === this.selectedIndex ? '#ffff00' : '#ffffff');
+    });
+  }
+
+  private startGame(levelId: number) {
+    this.scene.start('GameLevel', { levelId });
   }
 }
