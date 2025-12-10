@@ -3,7 +3,7 @@ export interface LevelConfig {
   name: string;
   nextLevelId?: number; // if null -> MainMenu
   platforms: { x: number, y: number, width: number, height: number }[];
-  enemies: { x: number, y: number, hp: number }[];
+  enemies: { x: number, y: number, hp: number, type?: 'melee' | 'ranged' }[];
   exitZone: { x: number, y: number, width: number, height: number };
   playerStart: { x: number, y: number };
 }
@@ -20,8 +20,8 @@ export const Levels: LevelConfig[] = [
       { x: 1200, y: 550, width: 200, height: 32 },
     ],
     enemies: [
-      { x: 600, y: 400, hp: 30 },
-      { x: 1300, y: 400, hp: 30 }
+      { x: 600, y: 400, hp: 30, type: 'melee' },
+      { x: 1300, y: 400, hp: 30, type: 'melee' }
     ],
     exitZone: { x: 1500, y: 500, width: 50, height: 200 } // End of world
   },
@@ -38,9 +38,9 @@ export const Levels: LevelConfig[] = [
       { x: 1200, y: 500, width: 400, height: 32 }, // Long run
     ],
     enemies: [
-      { x: 500, y: 300, hp: 50 },
-      { x: 700, y: 200, hp: 50 },
-      { x: 1200, y: 400, hp: 50 }
+      { x: 500, y: 300, hp: 50, type: 'melee' },
+      { x: 700, y: 200, hp: 50, type: 'melee' },
+      { x: 1200, y: 400, hp: 50, type: 'melee' }
     ],
     exitZone: { x: 1500, y: 450, width: 50, height: 200 }
   },
@@ -57,11 +57,11 @@ export const Levels: LevelConfig[] = [
       { x: 1100, y: 550, width: 100, height: 32 },
     ],
     enemies: [
-        { x: 300, y: 450, hp: 20 },
-        { x: 500, y: 450, hp: 20 },
-        { x: 700, y: 450, hp: 20 },
-        { x: 900, y: 450, hp: 20 },
-        { x: 1100, y: 450, hp: 20 },
+        { x: 300, y: 450, hp: 20, type: 'ranged' },
+        { x: 500, y: 450, hp: 20, type: 'ranged' },
+        { x: 700, y: 450, hp: 20, type: 'ranged' },
+        { x: 900, y: 450, hp: 20, type: 'ranged' },
+        { x: 1100, y: 450, hp: 20, type: 'ranged' },
     ],
     exitZone: { x: 1300, y: 500, width: 50, height: 200 }
   }

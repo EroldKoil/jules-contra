@@ -40,6 +40,14 @@ export class GameLevel extends Phaser.Scene {
     // 4. Setup Player
     this.player = new Player(this, config.playerStart.x, config.playerStart.y, 100);
 
+    // Give reference of player to enemies if needed (For Ranged)
+    this.level.enemies.forEach(e => {
+        // We can check if method exists or instanceof
+        if ('setTarget' in e && typeof (e as any).setTarget === 'function') {
+            (e as any).setTarget(this.player.sprite);
+        }
+    });
+
     // Add Weapons
     // Weapon 1: Rifle
     this.player.addWeapon(new Weapon({
@@ -76,14 +84,16 @@ export class GameLevel extends Phaser.Scene {
     // Bullets vs Platforms
     this.physics.add.collider(this.bullets, this.level.platforms, (obj1, _obj2) => {
       const bullet = obj1 as Phaser.Types.Physics.Arcade.GameObjectWithBody;
-      // If pierce is false, destroy. (Currently simple logic: walls always stop bullets)
-      // If we had thin platforms, maybe pass through? Assuming walls stop all.
+      bullet.destroy();
+    });
+
+    // Enemy Bullets vs Platforms
+    this.physics.add.collider(this.level.enemyBullets, this.level.platforms, (obj1, _obj2) => {
+      const bullet = obj1 as Phaser.Types.Physics.Arcade.GameObjectWithBody;
       bullet.destroy();
     });
 
     // Bullets vs Enemies
-    // We need to iterate enemies or add them to a group.
-    // Since Enemy class wraps the sprite, we can create a Group for enemy sprites.
     const enemySprites = this.physics.add.group();
     this.level.enemies.forEach(e => enemySprites.add(e.sprite));
 
@@ -91,8 +101,6 @@ export class GameLevel extends Phaser.Scene {
       const bullet = bulletObj as Phaser.Types.Physics.Arcade.GameObjectWithBody;
       const enemySprite = enemySpriteObj as Phaser.GameObjects.GameObject;
 
-      // Find the Enemy object
-      // We need to cast or compare correctly. e.sprite is Rectangle, enemySprite is GameObject (Rectangle).
       const enemy = this.level.enemies.find(e => e.sprite === enemySprite);
       if (enemy) {
         const dmg = bullet.getData('damage') || 10;
@@ -106,12 +114,25 @@ export class GameLevel extends Phaser.Scene {
     });
 
     // Player vs Enemies (Contact Damage)
-    this.physics.add.overlap(this.player.sprite, enemySprites, () => {
-       // Simple contact damage cooldown logic could go here
-       // For now, instant damage every frame? That's too fast.
-       // Let's add a "lastDamageTime" to player or simple pushback.
-       this.player.takeDamage(1);
-       // Optionally push player back
+    this.physics.add.overlap(this.player.sprite, enemySprites, (_playerObj, enemySpriteObj) => {
+       const enemySprite = enemySpriteObj as Phaser.GameObjects.GameObject;
+       const enemy = this.level.enemies.find(e => e.sprite === enemySprite);
+
+       if (enemy) {
+           const body = enemy.sprite.body as Phaser.Physics.Arcade.Body;
+           this.player.takeDamage(10, body.center.x, body.center.y); // Arbitrary contact damage
+       }
+    });
+
+    // Player vs Enemy Bullets
+    this.physics.add.overlap(this.player.sprite, this.level.enemyBullets, (_playerObj, bulletObj) => {
+        const bullet = bulletObj as Phaser.Types.Physics.Arcade.GameObjectWithBody;
+        const dmg = bullet.getData('damage') || 10;
+
+        // Pass bullet position as source
+        this.player.takeDamage(dmg, bullet.body.center.x, bullet.body.center.y);
+
+        bullet.destroy();
     });
 
     // Player vs Exit Zone
@@ -120,7 +141,7 @@ export class GameLevel extends Phaser.Scene {
     });
   }
 
-  update(time: number, _delta: number) {
+  update(time: number, delta: number) {
     if (!this.player || this.player.hp <= 0) {
         // Game Over logic or restart?
         // For now, reload level if dead
@@ -131,7 +152,7 @@ export class GameLevel extends Phaser.Scene {
     }
 
     this.player.update(time, this.bullets);
-    this.level.update();
+    this.level.update(time, delta);
 
     // Bullet Range Logic
     this.bullets.children.each((b) => {
@@ -149,6 +170,18 @@ export class GameLevel extends Phaser.Scene {
         }
       }
       return true; // continue iteration
+    });
+
+    // Enemy Bullets cleanup (bounds)
+    this.level.enemyBullets.children.each((b) => {
+        const bullet = b as Phaser.Types.Physics.Arcade.GameObjectWithBody;
+        if (bullet.active) {
+             // Simple cleanup if out of world
+             if (!this.physics.world.bounds.contains(bullet.body.x, bullet.body.y)) {
+                 bullet.destroy();
+             }
+        }
+        return true;
     });
   }
 
