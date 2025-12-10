@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { MainMenu } from './scenes/MainMenu';
 import { GameLevel } from './scenes/GameLevel';
+import { LevelTransition } from './scenes/LevelTransition';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -14,7 +15,7 @@ const config: Phaser.Types.Core.GameConfig = {
       debug: true
     }
   },
-  scene: [MainMenu, GameLevel]
+  scene: [MainMenu, GameLevel, LevelTransition]
 };
 
 new Phaser.Game(config);
