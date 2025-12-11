@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { LevelConfig } from '../configs/levels';
-import { Enemy } from './Enemy';
+import { Enemy } from './enemies/Enemy';
+import { MeleeEnemy } from './enemies/MeleeEnemy';
+import { RangedEnemy } from './enemies/RangedEnemy';
 
 export class Level {
   public scene: Phaser.Scene;
@@ -8,23 +10,26 @@ export class Level {
   public platforms: Phaser.Physics.Arcade.StaticGroup;
   public enemies: Enemy[] = [];
   public exitZone!: Phaser.GameObjects.Rectangle;
+  public enemyBullets!: Phaser.Physics.Arcade.Group;
 
   constructor(scene: Phaser.Scene, config: LevelConfig) {
     this.scene = scene;
     this.config = config;
     this.platforms = scene.physics.add.staticGroup();
+    this.enemyBullets = scene.physics.add.group({
+      classType: Phaser.GameObjects.Arc,
+      runChildUpdate: true
+    });
   }
 
   create() {
-    // 1. World Bounds (Adjust based on level content, e.g. exitZone x)
-    // Assuming horizontal progression, width ~ exitZone.x + 500
+    // 1. World Bounds
     const width = Math.max(1600, this.config.exitZone.x + 200);
     const height = 600;
     this.scene.physics.world.setBounds(0, 0, width, height);
     this.scene.cameras.main.setBounds(0, 0, width, height);
 
-    // 2. Base Ground (optional, or defined in config? Let's assume config handles platforms completely)
-    // Adding a safety floor at bottom just in case
+    // 2. Base Ground
     const floor = this.scene.add.rectangle(width / 2, height + 10, width, 20, 0x000000);
     this.scene.physics.add.existing(floor, true);
     this.platforms.add(floor);
@@ -38,7 +43,17 @@ export class Level {
 
     // 4. Enemies
     this.config.enemies.forEach(e => {
-      const enemy = new Enemy(this.scene, e.x, e.y, e.hp);
+      let enemy: Enemy;
+      if (e.type === 'ranged') {
+          enemy = new RangedEnemy(this.scene, e.x, e.y, e.hp);
+          // We need to set bullet group and target later, or pass now.
+          // Since Player is created in GameLevel, we can't set target here easily unless we pass it to Level.create or handle in GameLevel.
+          // Let's expose set methods on RangedEnemy and handle it in GameLevel.
+          (enemy as RangedEnemy).setBulletGroup(this.enemyBullets);
+      } else {
+          enemy = new MeleeEnemy(this.scene, e.x, e.y, e.hp);
+      }
+
       this.enemies.push(enemy);
       this.scene.physics.add.collider(enemy.sprite, this.platforms);
     });
@@ -47,15 +62,14 @@ export class Level {
     const ez = this.config.exitZone;
     this.exitZone = this.scene.add.rectangle(ez.x, ez.y, ez.width, ez.height, 0x00ff00);
     this.scene.physics.add.existing(this.exitZone, true);
-    // Make it semitransparent
     this.exitZone.setAlpha(0.5);
   }
 
-  update() {
+  update(time: number, delta: number) {
     // Cleanup dead enemies
     this.enemies = this.enemies.filter(e => {
        if (e.hp <= 0) return false;
-       e.update();
+       e.update(time, delta);
        return true;
     });
   }

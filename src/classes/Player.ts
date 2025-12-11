@@ -15,6 +15,11 @@ export class Player {
   private playerFacingRight: boolean = true;
   private currentAim: Phaser.Math.Vector2 = new Phaser.Math.Vector2(1, 0);
 
+  // Invulnerability & Knockback
+  private isInvulnerable: boolean = false;
+  private isKnockedBack: boolean = false;
+  private knockbackDuration: number = 500; // 0.5s
+
   // Input keys
   private keys: {
     w: Phaser.Input.Keyboard.Key;
@@ -69,10 +74,15 @@ export class Player {
   }
 
   private handleMovement() {
+    // If knocked back, player loses control
+    if (this.isKnockedBack) {
+        return;
+    }
+
     const speed = 200;
     const jumpSpeed = -550;
     const body = this.sprite.body;
-    const onGround = body.touching.down || body.blocked.down; // blocked check is safer for world bounds
+    const onGround = body.touching.down || body.blocked.down;
 
     let velocityX = 0;
     let aimX = 0;
@@ -143,6 +153,10 @@ export class Player {
   }
 
   private handleShooting(time: number, bulletGroup: Phaser.Physics.Arcade.Group) {
+    // If knocked back, maybe prevent shooting too? Original request only mentioned "lose control".
+    // Usually knockback prevents all actions.
+    if (this.isKnockedBack) return;
+
     // Weapon Switch
     if (Phaser.Input.Keyboard.JustDown(this.keys.switch1)) this.currentWeaponIndex = 0;
     if (Phaser.Input.Keyboard.JustDown(this.keys.switch2)) this.currentWeaponIndex = 1;
@@ -157,8 +171,6 @@ export class Player {
         // Origin: center of player
         const x = this.sprite.body.center.x;
         const y = this.sprite.body.center.y;
-
-        // Adjust for prone if needed? Center is usually fine.
 
         weapon.fire(this.scene, x, y, this.currentAim, bulletGroup, time);
       }
@@ -181,17 +193,64 @@ export class Player {
     this.hpBar.fillRect(x, y, width * hpPercent, 4);
   }
 
-  public takeDamage(amount: number) {
+  public takeDamage(amount: number, sourceX: number, sourceY: number) {
+    if (this.isInvulnerable) return;
+
     this.hp -= amount;
+
+    // Check death
     if (this.hp <= 0) {
       this.hp = 0;
-      this.sprite.setTint(0x555555); // Dead visual
-      // Disable body?
-      // this.sprite.disableBody(true, false);
+      this.sprite.setTint(0x555555);
+      // Handle death callback if needed, handled in GameLevel
     } else {
-      // Flash red
-      this.sprite.setTint(0xff0000);
-      this.scene.time.delayedCall(100, () => this.sprite.clearTint());
+      // Trigger Invulnerability & Knockback
+      this.startInvulnerability(sourceX, sourceY);
     }
+  }
+
+  private startInvulnerability(sourceX: number, sourceY: number) {
+      this.isInvulnerable = true;
+      this.isKnockedBack = true;
+
+      // Knockback Logic
+      // Calculate direction from source to player
+      const playerCenter = this.sprite.body.center;
+      const dx = playerCenter.x - sourceX;
+      const dy = playerCenter.y - sourceY;
+
+      const knockbackVector = new Phaser.Math.Vector2(dx, dy).normalize();
+
+      // If perfectly overlapped, push random or up
+      if (knockbackVector.lengthSq() === 0) {
+          knockbackVector.set(0, -1);
+      }
+
+      // Apply force
+      const force = 300;
+      // Usually knockback has an upward component to lift off ground slightly
+      // So we can bias Y slightly up
+      if (knockbackVector.y > -0.2) knockbackVector.y = -0.5; // Ensure some lift
+      knockbackVector.normalize().scale(force);
+
+      this.sprite.body.setVelocity(knockbackVector.x, knockbackVector.y);
+
+      // Flickering Effect
+      this.scene.tweens.add({
+          targets: this.sprite,
+          alpha: 0.2,
+          duration: 50,
+          yoyo: true,
+          repeat: 4, // 50ms * 2 * 5 = 500ms approx
+          onComplete: () => {
+              this.sprite.alpha = 1;
+              this.isInvulnerable = false;
+          }
+      });
+
+      // Reset Control
+      this.scene.time.delayedCall(this.knockbackDuration, () => {
+          this.isKnockedBack = false;
+      });
   }
 }
