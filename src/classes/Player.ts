@@ -28,8 +28,8 @@ export class Player {
     d: Phaser.Input.Keyboard.Key;
     jump: Phaser.Input.Keyboard.Key;
     fire: Phaser.Input.Keyboard.Key;
-    switch1: Phaser.Input.Keyboard.Key;
-    switch2: Phaser.Input.Keyboard.Key;
+    prevWeapon: Phaser.Input.Keyboard.Key;
+    nextWeapon: Phaser.Input.Keyboard.Key;
   };
 
   constructor(scene: Phaser.Scene, x: number, y: number, maxHp: number) {
@@ -56,8 +56,8 @@ export class Player {
       d: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D),
       jump: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.O),
       fire: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.I),
-      switch1: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ONE),
-      switch2: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.TWO),
+      prevWeapon: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q),
+      nextWeapon: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E),
     };
   }
 
@@ -158,8 +158,15 @@ export class Player {
     if (this.isKnockedBack) return;
 
     // Weapon Switch
-    if (Phaser.Input.Keyboard.JustDown(this.keys.switch1)) this.currentWeaponIndex = 0;
-    if (Phaser.Input.Keyboard.JustDown(this.keys.switch2)) this.currentWeaponIndex = 1;
+    const weaponCount = this.weapons.length;
+    if (weaponCount > 0) {
+      if (Phaser.Input.Keyboard.JustDown(this.keys.prevWeapon)) {
+        this.currentWeaponIndex = (this.currentWeaponIndex - 1 + weaponCount) % weaponCount;
+      }
+      if (Phaser.Input.Keyboard.JustDown(this.keys.nextWeapon)) {
+        this.currentWeaponIndex = (this.currentWeaponIndex + 1) % weaponCount;
+      }
+    }
 
     // Clamp index
     if (this.currentWeaponIndex >= this.weapons.length) this.currentWeaponIndex = 0;
