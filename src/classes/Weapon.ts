@@ -1,15 +1,18 @@
 import Phaser from 'phaser';
+import { SimpleBullet } from './projectiles/SimpleBullet';
+import { LaserProjectile, LaserConfig } from './projectiles/LaserProjectile';
 
 export interface WeaponConfig {
   name: string;
   fireRate: number; // ms between shots
   speed: number;
-  pierce: boolean;
+  pierce: boolean; // Retained for config compatibility, but used specifically logic-wise
   damage: number;
   range: number; // pixels
   bulletCount: number;
   spread: number; // degrees total spread
   type?: 'bullet' | 'laser';
+  segments?: number; // New config for laser
 }
 
 export class Weapon {
@@ -39,7 +42,6 @@ export class Weapon {
     const totalSpreadRad = Phaser.Math.DegToRad(this.config.spread);
 
     // If multiple bullets, center the spread
-    // e.g. 3 bullets, 30 deg spread. -15, 0, +15.
     const startAngle = this.config.bulletCount > 1
       ? baseAngle - totalSpreadRad / 2
       : baseAngle;
@@ -50,31 +52,31 @@ export class Weapon {
 
     for (let i = 0; i < this.config.bulletCount; i++) {
       const angle = startAngle + (step * i);
-      const velocity = new Phaser.Math.Vector2(Math.cos(angle), Math.sin(angle)).scale(this.config.speed);
 
-      let bullet: Phaser.GameObjects.Shape;
+      const projConfig = {
+          x: x,
+          y: y,
+          speed: this.config.speed,
+          angle: angle,
+          damage: this.config.damage,
+          range: this.config.range,
+          scene: scene,
+          physicsGroup: bulletGroup,
+          // Map old pierce config if needed, though specific projectiles override
+          piercePlatforms: this.config.type === 'laser' ? true : false,
+          destroyOnHit: true
+      };
 
       if (this.config.type === 'laser') {
-          // 32px long, 3.2px wide (approx 3px)
-          bullet = scene.add.rectangle(x, y, 32, 3, 0x00ffff);
-          bullet.setRotation(angle);
+          const laser = new LaserProjectile({
+              ...projConfig,
+              segments: this.config.segments || 3
+          } as LaserConfig);
+          laser.create(projConfig);
       } else {
-          bullet = scene.add.circle(x, y, 4, 0xffff00); // Yellow bullets
+          const bullet = new SimpleBullet(projConfig);
+          bullet.create(projConfig);
       }
-
-      scene.physics.add.existing(bullet);
-      bulletGroup.add(bullet);
-
-      const body = bullet.body as Phaser.Physics.Arcade.Body;
-      body.setVelocity(velocity.x, velocity.y);
-      body.allowGravity = false;
-
-      // Store extra data for range logic
-      bullet.setData('startX', x);
-      bullet.setData('startY', y);
-      bullet.setData('range', this.config.range);
-      bullet.setData('damage', this.config.damage);
-      bullet.setData('pierce', this.config.pierce);
     }
   }
 }
