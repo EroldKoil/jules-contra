@@ -9,6 +9,7 @@ export interface WeaponConfig {
   range: number; // pixels
   bulletCount: number;
   spread: number; // degrees total spread
+  type?: 'bullet' | 'laser';
 }
 
 export class Weapon {
@@ -51,7 +52,16 @@ export class Weapon {
       const angle = startAngle + (step * i);
       const velocity = new Phaser.Math.Vector2(Math.cos(angle), Math.sin(angle)).scale(this.config.speed);
 
-      const bullet = scene.add.circle(x, y, 4, 0xffff00); // Yellow bullets
+      let bullet: Phaser.GameObjects.Shape;
+
+      if (this.config.type === 'laser') {
+          // 32px long, 3.2px wide (approx 3px)
+          bullet = scene.add.rectangle(x, y, 32, 3, 0x00ffff);
+          bullet.setRotation(angle);
+      } else {
+          bullet = scene.add.circle(x, y, 4, 0xffff00); // Yellow bullets
+      }
+
       scene.physics.add.existing(bullet);
       bulletGroup.add(bullet);
 

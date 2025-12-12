@@ -73,6 +73,19 @@ export class GameLevel extends Phaser.Scene {
       pierce: false
     }));
 
+    // Weapon 3: Laser
+    this.player.addWeapon(new Weapon({
+      name: 'Laser',
+      fireRate: 500,
+      speed: 1000,
+      damage: 20,
+      range: 1200,
+      bulletCount: 1,
+      spread: 0,
+      pierce: true,
+      type: 'laser'
+    }));
+
     // Camera follow
     this.cameras.main.startFollow(this.player.sprite, true, 0.1, 0.1);
 
@@ -85,6 +98,11 @@ export class GameLevel extends Phaser.Scene {
     this.physics.add.collider(this.bullets, this.level.platforms, (obj1, _obj2) => {
       const bullet = obj1 as Phaser.Types.Physics.Arcade.GameObjectWithBody;
       bullet.destroy();
+    }, (obj1, _obj2) => {
+      // Process Callback: Return false to ignore collision (allow pierce)
+      const bullet = obj1 as Phaser.Types.Physics.Arcade.GameObjectWithBody;
+      const pierce = bullet.getData('pierce');
+      return !pierce;
     });
 
     // Enemy Bullets vs Platforms
