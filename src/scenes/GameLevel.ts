@@ -101,8 +101,10 @@ export class GameLevel extends Phaser.Scene {
     }, (obj1, _obj2) => {
       // Process Callback: Return false to ignore collision (allow pierce)
       const bullet = obj1 as Phaser.Types.Physics.Arcade.GameObjectWithBody;
+      // Default to 'pierce' if 'piercePlatforms' is not set (backward compatibility)
       const pierce = bullet.getData('pierce');
-      return !pierce;
+      const piercePlatforms = bullet.getData('piercePlatforms');
+      return piercePlatforms !== undefined ? !piercePlatforms : !pierce;
     });
 
     // Enemy Bullets vs Platforms
@@ -126,7 +128,13 @@ export class GameLevel extends Phaser.Scene {
       }
 
       const pierce = bullet.getData('pierce');
-      if (!pierce) {
+      const destroyOnHit = bullet.getData('destroyOnHit');
+
+      // If destroyOnHit is explicitly set, use it.
+      // Otherwise fallback to !pierce (old behavior: if pierce is true, don't destroy)
+      const shouldDestroy = destroyOnHit !== undefined ? destroyOnHit : !pierce;
+
+      if (shouldDestroy) {
         bullet.destroy();
       }
     });
