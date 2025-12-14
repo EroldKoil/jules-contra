@@ -10,6 +10,8 @@ export class Player {
   public hp: number;
   public maxHp: number;
 
+  public isDropping: boolean = false;
+
   private hpBar: Phaser.GameObjects.Graphics;
   private isProne: boolean = false;
   private playerFacingRight: boolean = true;
@@ -147,8 +149,17 @@ export class Player {
     body.setVelocityX(velocityX);
 
     // Jump
+    // Normal Jump
     if (this.keys.jump.isDown && onGround && !this.isProne) {
       body.setVelocityY(jumpSpeed);
+    }
+
+    // Drop Down (Prone + Jump)
+    if (this.isProne && Phaser.Input.Keyboard.JustDown(this.keys.jump)) {
+        this.isDropping = true;
+        this.scene.time.delayedCall(300, () => {
+            this.isDropping = false;
+        });
     }
   }
 

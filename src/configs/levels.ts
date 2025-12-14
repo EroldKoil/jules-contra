@@ -2,7 +2,7 @@ export interface LevelConfig {
   id: number;
   name: string;
   nextLevelId?: number; // if null -> MainMenu
-  platforms: { x: number, y: number, width: number, height: number }[];
+  platforms: { x: number, y: number, width: number, height: number, type?: 'solid' | 'one_way' }[];
   enemies: { x: number, y: number, hp: number, type?: 'melee' | 'ranged' }[];
   exitZone: { x: number, y: number, width: number, height: number };
   playerStart: { x: number, y: number };
@@ -15,9 +15,12 @@ export const Levels: LevelConfig[] = [
     nextLevelId: 2,
     playerStart: { x: 100, y: 400 },
     platforms: [
-      { x: 400, y: 550, width: 200, height: 32 },
-      { x: 800, y: 450, width: 200, height: 32 },
-      { x: 1200, y: 550, width: 200, height: 32 },
+      { x: 400, y: 550, width: 200, height: 32, type: 'solid' },
+      { x: 800, y: 450, width: 200, height: 32, type: 'one_way' }, // Changed to one_way
+      { x: 1200, y: 550, width: 200, height: 32, type: 'solid' },
+      // Added extra one-way platforms to test jumping through
+      { x: 600, y: 300, width: 150, height: 20, type: 'one_way' },
+      { x: 250, y: 300, width: 150, height: 20, type: 'one_way' }
     ],
     enemies: [
       { x: 600, y: 400, hp: 30, type: 'melee' },

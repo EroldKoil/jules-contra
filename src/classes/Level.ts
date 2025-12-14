@@ -8,6 +8,7 @@ export class Level {
   public scene: Phaser.Scene;
   public config: LevelConfig;
   public platforms: Phaser.Physics.Arcade.StaticGroup;
+  public oneWayPlatforms: Phaser.Physics.Arcade.StaticGroup;
   public enemies: Enemy[] = [];
   public exitZone!: Phaser.GameObjects.Rectangle;
   public enemyBullets!: Phaser.Physics.Arcade.Group;
@@ -16,6 +17,7 @@ export class Level {
     this.scene = scene;
     this.config = config;
     this.platforms = scene.physics.add.staticGroup();
+    this.oneWayPlatforms = scene.physics.add.staticGroup();
     this.enemyBullets = scene.physics.add.group({
       classType: Phaser.GameObjects.Arc,
       runChildUpdate: true
@@ -36,9 +38,22 @@ export class Level {
 
     // 3. Platforms
     this.config.platforms.forEach(p => {
-      const platform = this.scene.add.rectangle(p.x, p.y, p.width, p.height, 0x0000ff);
+      const isOneWay = p.type === 'one_way';
+      const color = isOneWay ? 0xff0000 : 0x0000ff;
+
+      const platform = this.scene.add.rectangle(p.x, p.y, p.width, p.height, color);
       this.scene.physics.add.existing(platform, true);
-      this.platforms.add(platform);
+
+      if (isOneWay) {
+        this.oneWayPlatforms.add(platform);
+        const body = platform.body as Phaser.Physics.Arcade.StaticBody;
+        body.checkCollision.down = false;
+        body.checkCollision.left = false;
+        body.checkCollision.right = false;
+        body.checkCollision.up = true;
+      } else {
+        this.platforms.add(platform);
+      }
     });
 
     // 4. Enemies
@@ -46,16 +61,15 @@ export class Level {
       let enemy: Enemy;
       if (e.type === 'ranged') {
           enemy = new RangedEnemy(this.scene, e.x, e.y, e.hp);
-          // We need to set bullet group and target later, or pass now.
-          // Since Player is created in GameLevel, we can't set target here easily unless we pass it to Level.create or handle in GameLevel.
-          // Let's expose set methods on RangedEnemy and handle it in GameLevel.
           (enemy as RangedEnemy).setBulletGroup(this.enemyBullets);
       } else {
           enemy = new MeleeEnemy(this.scene, e.x, e.y, e.hp);
       }
 
       this.enemies.push(enemy);
+      // Collide with both solid and one-way platforms
       this.scene.physics.add.collider(enemy.sprite, this.platforms);
+      this.scene.physics.add.collider(enemy.sprite, this.oneWayPlatforms);
     });
 
     // 5. Exit Zone
