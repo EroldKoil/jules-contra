@@ -91,27 +91,49 @@ export class GameLevel extends Phaser.Scene {
 
     // 5. Collisions
 
-    // Player vs Platforms
+    // Player vs Platforms (Solid)
     this.physics.add.collider(this.player.sprite, this.level.platforms);
 
+    // Player vs One-Way Platforms
+    this.physics.add.collider(this.player.sprite, this.level.oneWayPlatforms, undefined, (_playerObj, _platformObj) => {
+        // Process Callback
+        // If player is dropping, ignore collision
+        if (this.player.isDropping) {
+            return false;
+        }
+        return true;
+    });
+
     // Bullets vs Platforms
-    this.physics.add.collider(this.bullets, this.level.platforms, (obj1, _obj2) => {
+    const handleBulletPlatformCollision = (obj1: any, _obj2: any) => {
       const bullet = obj1 as Phaser.Types.Physics.Arcade.GameObjectWithBody;
       bullet.destroy();
-    }, (obj1, _obj2) => {
+    };
+
+    const processBulletPlatformCollision = (obj1: any, _obj2: any) => {
       // Process Callback: Return false to ignore collision (allow pierce)
       const bullet = obj1 as Phaser.Types.Physics.Arcade.GameObjectWithBody;
       // Default to 'pierce' if 'piercePlatforms' is not set (backward compatibility)
       const pierce = bullet.getData('pierce');
       const piercePlatforms = bullet.getData('piercePlatforms');
       return piercePlatforms !== undefined ? !piercePlatforms : !pierce;
-    });
+    };
 
-    // Enemy Bullets vs Platforms
-    this.physics.add.collider(this.level.enemyBullets, this.level.platforms, (obj1, _obj2) => {
+    // Bullets vs Solid Platforms
+    this.physics.add.collider(this.bullets, this.level.platforms, handleBulletPlatformCollision, processBulletPlatformCollision);
+
+    // Bullets vs One-Way Platforms
+    // Same logic as solid platforms (collide/destroy unless piercing)
+    this.physics.add.collider(this.bullets, this.level.oneWayPlatforms, handleBulletPlatformCollision, processBulletPlatformCollision);
+
+    // Enemy Bullets vs Platforms (Solid & One-Way)
+    const handleEnemyBulletPlatformCollision = (obj1: any, _obj2: any) => {
       const bullet = obj1 as Phaser.Types.Physics.Arcade.GameObjectWithBody;
       bullet.destroy();
-    });
+    };
+
+    this.physics.add.collider(this.level.enemyBullets, this.level.platforms, handleEnemyBulletPlatformCollision);
+    this.physics.add.collider(this.level.enemyBullets, this.level.oneWayPlatforms, handleEnemyBulletPlatformCollision);
 
     // Bullets vs Enemies
     const enemySprites = this.physics.add.group();
