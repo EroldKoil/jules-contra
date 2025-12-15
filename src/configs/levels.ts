@@ -3,7 +3,7 @@ export interface LevelConfig {
   name: string;
   nextLevelId?: number; // if null -> MainMenu
   platforms: { x: number, y: number, width: number, height: number, type?: 'solid' | 'one_way' }[];
-  enemies: { x: number, y: number, hp: number, type?: 'melee' | 'ranged' }[];
+  enemies: { x: number, y: number, hp: number, type?: 'melee' | 'ranged' | 'horizontal', facing?: 'left' | 'right' }[];
   exitZone: { x: number, y: number, width: number, height: number };
   playerStart: { x: number, y: number };
 }
@@ -50,7 +50,7 @@ export const Levels: LevelConfig[] = [
   {
     id: 3,
     name: "Level 3: The Gauntlet",
-    nextLevelId: undefined, // End game
+    nextLevelId: 4, // Next to Level 4
     playerStart: { x: 50, y: 500 },
     platforms: [
       { x: 300, y: 550, width: 100, height: 32 },
@@ -67,5 +67,23 @@ export const Levels: LevelConfig[] = [
         { x: 1100, y: 450, hp: 20, type: 'ranged' },
     ],
     exitZone: { x: 1300, y: 500, width: 50, height: 200 }
+  },
+  {
+    id: 4,
+    name: "Level 4: The Ambush",
+    nextLevelId: undefined, // End game
+    playerStart: { x: 50, y: 500 },
+    platforms: [
+      { x: 200, y: 550, width: 200, height: 32 },
+      { x: 600, y: 550, width: 200, height: 32 }, // Enemy on top
+      { x: 1000, y: 550, width: 200, height: 32 }, // Enemy on top
+      { x: 1400, y: 400, width: 200, height: 32 }, // Higher platform
+    ],
+    enemies: [
+        { x: 600, y: 450, hp: 30, type: 'horizontal', facing: 'left' },
+        { x: 1000, y: 450, hp: 30, type: 'horizontal', facing: 'right' },
+        { x: 1400, y: 300, hp: 30, type: 'horizontal', facing: 'left' },
+    ],
+    exitZone: { x: 1550, y: 250, width: 50, height: 200 }
   }
 ];

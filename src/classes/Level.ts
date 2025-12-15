@@ -3,6 +3,7 @@ import { LevelConfig } from '../configs/levels';
 import { Enemy } from './enemies/Enemy';
 import { MeleeEnemy } from './enemies/MeleeEnemy';
 import { RangedEnemy } from './enemies/RangedEnemy';
+import { HorizontalEnemy } from './enemies/HorizontalEnemy';
 
 export class Level {
   public scene: Phaser.Scene;
@@ -62,6 +63,9 @@ export class Level {
       if (e.type === 'ranged') {
           enemy = new RangedEnemy(this.scene, e.x, e.y, e.hp);
           (enemy as RangedEnemy).setBulletGroup(this.enemyBullets);
+      } else if (e.type === 'horizontal') {
+          enemy = new HorizontalEnemy(this.scene, e.x, e.y, e.hp, e.facing || 'left');
+          (enemy as HorizontalEnemy).setBulletGroup(this.enemyBullets);
       } else {
           enemy = new MeleeEnemy(this.scene, e.x, e.y, e.hp);
       }

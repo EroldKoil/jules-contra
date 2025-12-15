@@ -22,7 +22,7 @@ export class MainMenu extends Phaser.Scene {
       color: '#ffffff'
     }).setOrigin(0.5);
 
-    const options = ['Start Level 1', 'Start Level 2', 'Start Level 3'];
+    const options = ['Start Level 1', 'Start Level 2', 'Start Level 3', 'Start Level 4'];
 
     options.forEach((opt, index) => {
       const text = this.add.text(width / 2, height / 2 + (index * 40), opt, {
