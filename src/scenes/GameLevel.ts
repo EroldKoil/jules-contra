@@ -3,6 +3,8 @@ import { Player } from '../classes/Player';
 import { Level } from '../classes/Level';
 import { Levels } from '../configs/levels';
 import { Weapon } from '../classes/Weapon';
+import playerPng from '../assets/player/player.png';
+import playerJson from '../assets/player/player.json';
 
 export class GameLevel extends Phaser.Scene {
   private player!: Player;
@@ -16,6 +18,10 @@ export class GameLevel extends Phaser.Scene {
 
   init(data: { levelId?: number }) {
     this.currentLevelId = data.levelId || 1;
+  }
+
+  preload() {
+    this.load.atlas('player', playerPng, playerJson);
   }
 
   create() {
