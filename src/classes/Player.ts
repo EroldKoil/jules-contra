@@ -13,7 +13,7 @@ export class Player {
   public isDropping: boolean = false;
 
   private hpBar: Phaser.GameObjects.Graphics;
-  private isProne: boolean = false;
+  private _isProne: boolean = false; // Internal variable
   private playerFacingRight: boolean = true;
   private currentAim: Phaser.Math.Vector2 = new Phaser.Math.Vector2(1, 0);
 
@@ -21,6 +21,9 @@ export class Player {
   private isInvulnerable: boolean = false;
   private isKnockedBack: boolean = false;
   private knockbackDuration: number = 500; // 0.5s
+
+  // Death State
+  private _isDead: boolean = false;
 
   // Input keys
   private keys: {
@@ -39,12 +42,16 @@ export class Player {
     this.maxHp = maxHp;
     this.hp = maxHp;
 
-    // Create Sprite (using Rectangle for now)
-    const playerRect = scene.add.rectangle(x, y, 32, 64, 0xff0000);
-    scene.physics.add.existing(playerRect);
-    this.sprite = playerRect as unknown as Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
+    // Create Animations
+    this.createAnimations();
+
+    // Create Sprite
+    this.sprite = scene.physics.add.sprite(x, y, 'player', 'idle_0');
     this.sprite.body.setCollideWorldBounds(true);
     this.sprite.body.setGravityY(600);
+
+    // Initial Body Size (Idle: ~23x34)
+    this.sprite.body.setSize(23, 34);
 
     // HP Bar
     this.hpBar = scene.add.graphics();
@@ -63,20 +70,137 @@ export class Player {
     };
   }
 
+  get isDead(): boolean {
+    return this._isDead;
+  }
+
+  get isProne(): boolean {
+    return this._isProne;
+  }
+
+  private createAnimations() {
+    if (!this.scene.anims.exists('player-idle')) {
+      this.scene.anims.create({
+        key: 'player-idle',
+        frames: this.scene.anims.generateFrameNames('player', { prefix: 'idle_', start: 0, end: 1 }),
+        frameRate: 4,
+        repeat: -1
+      });
+    }
+
+    if (!this.scene.anims.exists('player-run')) {
+        this.scene.anims.create({
+          key: 'player-run',
+          frames: this.scene.anims.generateFrameNames('player', { prefix: 'run_', start: 0, end: 5 }),
+          frameRate: 10,
+          repeat: -1
+        });
+    }
+
+    if (!this.scene.anims.exists('player-jump')) {
+        this.scene.anims.create({
+            key: 'player-jump',
+            frames: this.scene.anims.generateFrameNames('player', { prefix: 'jump_', start: 0, end: 3 }),
+            frameRate: 8,
+            repeat: -1
+        });
+    }
+
+    if (!this.scene.anims.exists('player-die-process')) {
+        this.scene.anims.create({
+            key: 'player-die-process',
+            frames: this.scene.anims.generateFrameNames('player', { prefix: 'die-process_', start: 0, end: 3 }),
+            frameRate: 8,
+            repeat: 0
+        });
+    }
+
+    if (!this.scene.anims.exists('player-die')) {
+        this.scene.anims.create({
+            key: 'player-die',
+            frames: [{ key: 'player', frame: 'die' }],
+            frameRate: 1,
+            repeat: -1
+        });
+    }
+
+    if (!this.scene.anims.exists('player-lie')) {
+        this.scene.anims.create({
+            key: 'player-lie',
+            frames: [{ key: 'player', frame: 'lie' }],
+            frameRate: 1,
+            repeat: -1
+        });
+    }
+  }
+
   addWeapon(weapon: Weapon) {
     this.weapons.push(weapon);
   }
 
   update(time: number, bulletGroup: Phaser.Physics.Arcade.Group) {
-    if (this.hp <= 0) return; // Dead?
+    if (this.hp <= 0) {
+        if (!this._isDead) {
+            this.handleDeath();
+        }
+        return;
+    }
 
     this.handleMovement();
     this.handleShooting(time, bulletGroup);
     this.updateHpBar();
   }
 
+  private resizeBody(width: number, height: number) {
+      if (this.sprite.body.width === width && this.sprite.body.height === height) {
+          return;
+      }
+
+      // 1. Get current bottom Y (in world space)
+      // body.y is top-left of the physics body
+      const oldBottom = this.sprite.body.y + this.sprite.body.height;
+
+      // 2. Resize Body
+      this.sprite.body.setSize(width, height);
+      this.sprite.body.setOffset((this.sprite.width - width) / 2, (this.sprite.height - height) / 2);
+
+      // 3. Calculate new top-left Y based on old bottom, to keep feet anchored
+      // newBottom (should be equal to oldBottom) = newY + newHeight
+      // newY = oldBottom - newHeight
+
+      const newY = oldBottom - height;
+
+      // 4. Adjust Sprite Y
+      // The body position is derived from sprite position.
+      // body.y = sprite.y - (sprite.height * originY) + offset.y  (roughly)
+      // But we can just move the sprite by the difference needed.
+
+      // Let's look at current body.y after resize.
+      // We want body.y to be `newY`.
+      // The difference is `newY - this.sprite.body.y`.
+      // We apply that diff to sprite.y
+
+      const currentBodyY = this.sprite.body.y;
+      const diff = newY - currentBodyY;
+
+      this.sprite.y += diff;
+  }
+
+  private handleDeath() {
+    this._isDead = true;
+    this.sprite.body.setVelocity(0, 0);
+    this.sprite.body.setAcceleration(0, 0);
+
+    this.sprite.play('player-die-process');
+    this.resizeBody(23, 23);
+
+    this.sprite.once('animationcomplete-player-die-process', () => {
+        this.sprite.play('player-die');
+        this.resizeBody(32, 10);
+    });
+  }
+
   private handleMovement() {
-    // If knocked back, player loses control
     if (this.isKnockedBack) {
         return;
     }
@@ -89,7 +213,7 @@ export class Player {
     let velocityX = 0;
     let aimX = 0;
     let aimY = 0;
-    this.isProne = false;
+    this._isProne = false;
 
     // Horizontal Input
     if (this.keys.a.isDown) {
@@ -100,23 +224,26 @@ export class Player {
       this.playerFacingRight = true;
     }
 
+    // Facing
+    this.sprite.setFlipX(!this.playerFacingRight);
+
     // Aiming & Prone
     aimX = this.playerFacingRight ? 1 : -1;
     aimY = 0;
 
-    if (this.keys.w.isDown) { // UP
+    if (this.keys.w.isDown) {
       aimY = -1;
       if (velocityX === 0) aimX = 0;
-    } else if (this.keys.s.isDown) { // DOWN
+    } else if (this.keys.s.isDown) {
       if (velocityX !== 0) {
-        aimY = 1; // Diagonal Down
+        aimY = 1;
       } else {
         if (onGround) {
-          this.isProne = true;
-          aimY = 0; // Prone shoot horizontal
+          this._isProne = true;
+          aimY = 0;
         } else {
-          aimY = 1; // Air down
-          aimX = 0; // Straight down
+          aimY = 1;
+          aimX = 0;
         }
       }
     }
@@ -126,49 +253,55 @@ export class Player {
       this.currentAim.set(this.playerFacingRight ? 1 : -1, 0);
     }
 
-    // Prone Physics/Visuals
-    const currentW = body.width;
-    const currentH = body.height;
-    let targetW = 32;
-    let targetH = 64;
-
-    if (this.isProne) {
-      targetW = 64;
-      targetH = 32;
-    }
-
-    if (currentW !== targetW || currentH !== targetH) {
-      (this.sprite as any).setSize(targetW, targetH);
-      body.setSize(targetW, targetH);
-
-      const heightDiff = currentH - targetH;
-      this.sprite.y += heightDiff / 2;
-    }
-
-    if (this.isProne) velocityX = 0;
+    // Physics Update
+    if (this._isProne) velocityX = 0;
     body.setVelocityX(velocityX);
 
     // Jump
-    // Normal Jump
-    if (this.keys.jump.isDown && onGround && !this.isProne) {
+    if (this.keys.jump.isDown && onGround && !this._isProne) {
       body.setVelocityY(jumpSpeed);
     }
 
-    // Drop Down (Prone + Jump)
-    if (this.isProne && Phaser.Input.Keyboard.JustDown(this.keys.jump)) {
+    // Drop Down
+    if (this._isProne && Phaser.Input.Keyboard.JustDown(this.keys.jump)) {
         this.isDropping = true;
         this.scene.time.delayedCall(300, () => {
             this.isDropping = false;
         });
     }
+
+    // Animation & Body Size Logic
+    if (this._isProne) {
+        if (this.sprite.anims.currentAnim?.key !== 'player-lie') {
+            this.sprite.play('player-lie', true);
+            this.resizeBody(16, 32);
+        }
+    } else if (onGround) {
+        if (velocityX !== 0) {
+            // Run
+            if (this.sprite.anims.currentAnim?.key !== 'player-run') {
+                this.sprite.play('player-run', true);
+                this.resizeBody(20, 35);
+            }
+        } else {
+            // Idle
+            if (this.sprite.anims.currentAnim?.key !== 'player-idle') {
+                this.sprite.play('player-idle', true);
+                this.resizeBody(23, 34);
+            }
+        }
+    } else {
+        // Air / Jump
+        if (this.sprite.anims.currentAnim?.key !== 'player-jump') {
+            this.sprite.play('player-jump', true);
+            this.resizeBody(20, 20);
+        }
+    }
   }
 
   private handleShooting(time: number, bulletGroup: Phaser.Physics.Arcade.Group) {
-    // If knocked back, maybe prevent shooting too? Original request only mentioned "lose control".
-    // Usually knockback prevents all actions.
     if (this.isKnockedBack) return;
 
-    // Weapon Switch
     const weaponCount = this.weapons.length;
     if (weaponCount > 0) {
       if (Phaser.Input.Keyboard.JustDown(this.keys.prevWeapon)) {
@@ -179,14 +312,11 @@ export class Player {
       }
     }
 
-    // Clamp index
     if (this.currentWeaponIndex >= this.weapons.length) this.currentWeaponIndex = 0;
 
-    // Fire
     if (this.keys.fire.isDown) {
       const weapon = this.weapons[this.currentWeaponIndex];
       if (weapon && weapon.canFire(time)) {
-        // Origin: center of player
         const x = this.sprite.body.center.x;
         const y = this.sprite.body.center.y;
 
@@ -201,28 +331,22 @@ export class Player {
     const y = this.sprite.body.y - 10;
     const width = this.sprite.body.width;
 
-    // Background
     this.hpBar.fillStyle(0x000000);
     this.hpBar.fillRect(x, y, width, 4);
 
-    // Foreground
     const hpPercent = Math.max(0, this.hp / this.maxHp);
     this.hpBar.fillStyle(0x00ff00);
     this.hpBar.fillRect(x, y, width * hpPercent, 4);
   }
 
   public takeDamage(amount: number, sourceX: number, sourceY: number) {
-    if (this.isInvulnerable) return;
+    if (this.isInvulnerable || this._isDead) return;
 
     this.hp -= amount;
 
-    // Check death
     if (this.hp <= 0) {
       this.hp = 0;
-      this.sprite.setTint(0x555555);
-      // Handle death callback if needed, handled in GameLevel
     } else {
-      // Trigger Invulnerability & Knockback
       this.startInvulnerability(sourceX, sourceY);
     }
   }
@@ -231,42 +355,34 @@ export class Player {
       this.isInvulnerable = true;
       this.isKnockedBack = true;
 
-      // Knockback Logic
-      // Calculate direction from source to player
       const playerCenter = this.sprite.body.center;
       const dx = playerCenter.x - sourceX;
       const dy = playerCenter.y - sourceY;
 
       const knockbackVector = new Phaser.Math.Vector2(dx, dy).normalize();
 
-      // If perfectly overlapped, push random or up
       if (knockbackVector.lengthSq() === 0) {
           knockbackVector.set(0, -1);
       }
 
-      // Apply force
       const force = 300;
-      // Usually knockback has an upward component to lift off ground slightly
-      // So we can bias Y slightly up
-      if (knockbackVector.y > -0.2) knockbackVector.y = -0.5; // Ensure some lift
+      if (knockbackVector.y > -0.2) knockbackVector.y = -0.5;
       knockbackVector.normalize().scale(force);
 
       this.sprite.body.setVelocity(knockbackVector.x, knockbackVector.y);
 
-      // Flickering Effect
       this.scene.tweens.add({
           targets: this.sprite,
           alpha: 0.2,
           duration: 50,
           yoyo: true,
-          repeat: 4, // 50ms * 2 * 5 = 500ms approx
+          repeat: 4,
           onComplete: () => {
               this.sprite.alpha = 1;
               this.isInvulnerable = false;
           }
       });
 
-      // Reset Control
       this.scene.time.delayedCall(this.knockbackDuration, () => {
           this.isKnockedBack = false;
       });

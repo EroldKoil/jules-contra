@@ -3,12 +3,15 @@ import { Player } from '../classes/Player';
 import { Level } from '../classes/Level';
 import { Levels } from '../configs/levels';
 import { Weapon } from '../classes/Weapon';
+import playerPng from '../assets/player/player.png';
+import playerJson from '../assets/player/player.json';
 
 export class GameLevel extends Phaser.Scene {
   private player!: Player;
   private level!: Level;
   private bullets!: Phaser.Physics.Arcade.Group;
   private currentLevelId: number = 1;
+  private isLevelResetting: boolean = false;
 
   constructor() {
     super('GameLevel');
@@ -16,6 +19,10 @@ export class GameLevel extends Phaser.Scene {
 
   init(data: { levelId?: number }) {
     this.currentLevelId = data.levelId || 1;
+  }
+
+  preload() {
+    this.load.atlas('player', playerPng, playerJson);
   }
 
   create() {
@@ -190,13 +197,17 @@ export class GameLevel extends Phaser.Scene {
   }
 
   update(time: number, delta: number) {
-    if (!this.player || this.player.hp <= 0) {
-        // Game Over logic or restart?
-        // For now, reload level if dead
-        if (this.player && this.player.hp <= 0) {
-             this.scene.restart({ levelId: this.currentLevelId });
+    if (!this.player) return;
+
+    // Handle Death Restart
+    if (this.player.isDead) {
+        if (!this.isLevelResetting) {
+            this.isLevelResetting = true;
+            this.time.delayedCall(2000, () => {
+                this.isLevelResetting = false;
+                this.scene.restart({ levelId: this.currentLevelId });
+            });
         }
-        return;
     }
 
     this.player.update(time, this.bullets);
